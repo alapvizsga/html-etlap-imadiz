@@ -19,7 +19,7 @@ jobs:
     - name: Run pytest
       id: pytest-run
       continue-on-error: true  # Akkor is folytatja a workflow-t, ha egy teszt elbukik
-      run: pytest --tb=short --disable-warnings --json-report --json-report-file=results.json
+      run: pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
 
     - name: Process results for autograding
       id: process-results
