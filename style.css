@@ -8,3 +8,7 @@ body{
 h1{
     text-align: center;
 }
+.hetek{
+    display: flex;
+    justify-content: space-evenly;
+}
