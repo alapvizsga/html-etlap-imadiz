@@ -10,58 +10,63 @@ jobs:
     runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: pip install pytest bs4 cssutils pytest-json-report
+      - name: Install dependencies
+        run: pip install pytest bs4 cssutils pytest-json-report
 
-    - name: Run pytest
-      id: pytest-run
-      continue-on-error: true
-      run: |
-        pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
+      - name: Run pytest
+        id: pytest-run
+        continue-on-error: true
+        run: |
+          # A pytest futtatása, a hibakódokat elnyelve az || true miatt
+          pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
+          echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV
 
-    - name: Process results for autograding
-      id: process-results
-      run: |
-        import json
-        import os
+      - name: Process results for autograding
+        id: process-results
+        continue-on-error: true
+        shell: python
+        run: |
+          import json
+          import os
 
-        total_score = 0
-        max_score = 40
+          total_score = 0
+          max_score = 40
 
-        try:
-            with open("results.json") as f:
-                data = json.load(f)
+          try:
+              # JSON fájl beolvasása
+              with open("results.json") as f:
+                  data = json.load(f)
 
-            # Ellenőrizzük, hogy a JSON formátum megfelelő-e
-            if "tests" in data:
-                for test in data["tests"]:
-                    if test.get("outcome") == "passed":
-                        total_score += test.get("points", 0)
+              # A sikeresen teljesített tesztek pontjainak összeadása
+              if isinstance(data, list):
+                  for test in data:
+                      if test.get("status") == "passed":
+                          total_score += test.get("points", 0)
 
-            total_score = min(total_score, max_score)
+              # Az összpontszám nem haladhatja meg a maximumot
+              total_score = min(total_score, max_score)
 
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Hiba a JSON fájl beolvasásakor: {e}")
-            total_score = 0
+          except (FileNotFoundError, json.JSONDecodeError):
+              print("No valid results.json found, setting score to 0.")
 
-        print(f"Final Score: {total_score}/{max_score}")
+          print(f"Final Score: {total_score}/{max_score}")
 
-        # Az eredményeket környezeti változóként elmentjük
-        with open(os.getenv('GITHUB_ENV'), 'a') as f:
-            f.write(f"TOTAL_SCORE={total_score}\n")
+          # Az összpontszám beállítása környezeti változóként
+          with open(os.getenv('GITHUB_ENV'), 'a') as f:
+              f.write(f"TOTAL_SCORE={total_score}\n")
 
-      shell: python
+      - name: Autograding Reporter
+        id: reporter
+        continue-on-error: true
+        uses: classroom-resources/autograding-grading-reporter@v1
+        env:
+          TOTAL_SCORE: "${{ env.TOTAL_SCORE }}"
+        with:
+          runners: pytest-run
 
-    - name: Autograding Reporter
-      uses: classroom-resources/autograding-grading-reporter@v1
-      env:
-        TOTAL_SCORE: "${{ env.TOTAL_SCORE }}"
-      with:
-        runners: pytest-run
-
-    - name: Ensure success
-      if: always()
-      run: exit 0
+      - name: Ensure success
+        if: always()
+        run: echo "Completed autograding, exiting with code 0." && exit 0
