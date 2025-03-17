@@ -21,7 +21,6 @@ jobs:
       continue-on-error: true
       run: |
         pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
-        echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV
 
     - name: Process results for autograding
       id: process-results
@@ -36,18 +35,21 @@ jobs:
             with open("results.json") as f:
                 data = json.load(f)
 
-            if isinstance(data, list):
-                for test in data:
-                    if test.get("status") == "passed":
+            # Ellenőrizzük, hogy a JSON formátum megfelelő-e
+            if "tests" in data:
+                for test in data["tests"]:
+                    if test.get("outcome") == "passed":
                         total_score += test.get("points", 0)
 
             total_score = min(total_score, max_score)
 
-        except (FileNotFoundError, json.JSONDecodeError):
-            print("No valid results.json found, setting score to 0.")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Hiba a JSON fájl beolvasásakor: {e}")
+            total_score = 0
 
         print(f"Final Score: {total_score}/{max_score}")
 
+        # Az eredményeket környezeti változóként elmentjük
         with open(os.getenv('GITHUB_ENV'), 'a') as f:
             f.write(f"TOTAL_SCORE={total_score}\n")
 
