@@ -18,6 +18,7 @@ jobs:
 
     - name: Run pytest
       id: pytest-run
+      continue-on-error: true  # Akkor is folytatja a workflow-t, ha egy teszt elbukik
       run: pytest --tb=short --disable-warnings --json-report --json-report-file=results.json
 
     - name: Process results for autograding
@@ -26,20 +27,25 @@ jobs:
         import json
         import os
 
-        # JSON fájl beolvasása
-        with open("results.json") as f:
-            data = json.load(f)
-
         total_score = 0
         max_score = 40
 
-        # Összegyűjtjük a sikeresen teljesített tesztek pontjait
-        for test in data:
-            if test["status"] == "passed":
-                total_score += test["points"]
+        try:
+            # JSON fájl beolvasása
+            with open("results.json") as f:
+                data = json.load(f)
 
-        # Ha a pontszám meghaladja a maximumot, vágjuk le
-        total_score = min(total_score, max_score)
+            # Ha vannak tesztek, dolgozzuk fel az eredményeket
+            if isinstance(data, list):
+                for test in data:
+                    if test.get("status") == "passed":
+                        total_score += test.get("points", 0)
+
+            # Ha a pontszám meghaladja a maximumot, vágjuk le
+            total_score = min(total_score, max_score)
+
+        except (FileNotFoundError, json.JSONDecodeError):
+            print("No valid results.json found, setting score to 0.")
 
         print(f"Final Score: {total_score}/{max_score}")
 
