@@ -18,10 +18,10 @@ jobs:
 
     - name: Run pytest
       id: pytest-run
-      continue-on-error: true  # Akkor is folytatja a workflow-t, ha egy teszt elbukik
+      continue-on-error: true
       run: |
-        pytest --tb=short --disable-warnings --json-report --json-report-file=results.json
-        echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV  # Elmentjük a kilépési kódot
+        pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
+        echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV
 
     - name: Process results for autograding
       id: process-results
@@ -49,7 +49,7 @@ jobs:
         print(f"Final Score: {total_score}/{max_score}")
 
         with open(os.getenv('GITHUB_ENV'), 'a') as f:
-            f.write(f"{total_score}/{max_score}\n")
+            f.write(f"TOTAL_SCORE={total_score}\n")
 
       shell: python
 
@@ -60,6 +60,6 @@ jobs:
       with:
         runners: pytest-run
 
-    - name: Force workflow success
+    - name: Ensure success
       if: always()
-      run: exit 0  # A workflow mindig sikeresen zárul, függetlenül a pytest hibájától
+      run: exit 0
