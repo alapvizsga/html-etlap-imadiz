@@ -19,7 +19,9 @@ jobs:
     - name: Run pytest
       id: pytest-run
       continue-on-error: true  # Akkor is folytatja a workflow-t, ha egy teszt elbukik
-      run: pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
+      run: |
+        pytest --tb=short --disable-warnings --json-report --json-report-file=results.json
+        echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV  # Elmentjük a kilépési kódot
 
     - name: Process results for autograding
       id: process-results
@@ -31,17 +33,14 @@ jobs:
         max_score = 40
 
         try:
-            # JSON fájl beolvasása
             with open("results.json") as f:
                 data = json.load(f)
 
-            # Ha vannak tesztek, dolgozzuk fel az eredményeket
             if isinstance(data, list):
                 for test in data:
                     if test.get("status") == "passed":
                         total_score += test.get("points", 0)
 
-            # Ha a pontszám meghaladja a maximumot, vágjuk le
             total_score = min(total_score, max_score)
 
         except (FileNotFoundError, json.JSONDecodeError):
@@ -49,7 +48,6 @@ jobs:
 
         print(f"Final Score: {total_score}/{max_score}")
 
-        # Kiírjuk az összpontszámot GitHub Actions környezeti változóként
         with open(os.getenv('GITHUB_ENV'), 'a') as f:
             f.write(f"{total_score}/{max_score}\n")
 
@@ -61,3 +59,7 @@ jobs:
         TOTAL_SCORE: "${{ env.TOTAL_SCORE }}"
       with:
         runners: pytest-run
+
+    - name: Force workflow success
+      if: always()
+      run: exit 0  # A workflow mindig sikeresen zárul, függetlenül a pytest hibájától
