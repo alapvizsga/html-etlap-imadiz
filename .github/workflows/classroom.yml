@@ -14,14 +14,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: pip install pytest bs4 cssutils pytest-json-report
+        run: pip install pytest bs4 cssutils pytest-json-report pytest-custom_exit_code
 
       - name: Run pytest
         id: pytest-run
         continue-on-error: true
         run: |
           # A pytest futtatása, a hibakódokat elnyelve az || true miatt
-          pytest --tb=short --disable-warnings --json-report --json-report-file=results.json || true
+          pytest --tb=short --disable-warnings --json-report --json-report-file=results.json --suppress-tests-failed-exit-code || true
           echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV
 
       - name: Process results for autograding
